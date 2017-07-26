@@ -6,6 +6,7 @@
 package runner;
 
 import java.util.List;
+import runner.ProgramException.ExceptionType;
 
 /**
  *
@@ -39,5 +40,12 @@ public class MessagePrinter {
         for (int i = smallList.size(); i < bigList.size(); i++) {
             printInfo(bigList.get(i));
         }
+    }
+    
+    public void notifyResult(String testName, ExceptionType exType, String message){
+        System.out.println("Test: " + testName);
+        System.out.println("Error: " + exType.toString());
+        System.out.println("Message: " + message);
+        System.out.println(""); // print newLine
     }
 }

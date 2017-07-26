@@ -50,6 +50,7 @@ public class AppRunner {
         // sudo docker run -it --rm -v /home/dato/dockerImages:/test -w /test oracle-java
         // java AppRunner -Xmx1m 2000 java user1 /home/dato/dockerImages/tests 01,02
 //-Xmx1m 2000 java /home/dato/Documents/project/users/Bob/user /home/dato/dockerImages/tests 01.in,02.in
+// -Xmx1m 2000 java Memory ./codesData/users/Bob/ /home/dato/dockerImages/tests 01,02"
 
             String memLimit = args[0];              // -Xmx1m
             long timeout = Long.parseLong(args[1]); // 2000 -> 2 seconds
@@ -59,6 +60,7 @@ public class AppRunner {
             int lastSlashIndex = userClassFilePath.lastIndexOf("/");
             String userClassFile = userClassFilePath.substring(lastSlashIndex+1);
             String userClassFileDir = userClassFilePath.substring(0, lastSlashIndex);
+//            String outputFilesDirPath = args[4];    // docker-istvis sadacaa result.out, anu damauntebuli direqtoriidan rogor miagnos da ara realuri diskis path-idan.
             String taskTestsPath = args[4];         // /home/dato/dockerImages/tests
 
             String[] testsNames = args[5].split(","); 	// 01.in,02.in
@@ -67,8 +69,8 @@ public class AppRunner {
             for (int i = 0; i < testsNames.length; i++) {
                 String testFile = taskTestsPath + File.separator + testsNames[i];
                 try {
-                    executeCommandLine(userClassFileDir, timeout, languageCommand, memLimit, 
-                                            userClassFile, testFile);
+                    executeCommandLine(userClassFileDir, 
+                                        timeout, languageCommand, memLimit, userClassFile, testFile);
                 }
                 catch (ProgramException ex) {
                    processException(ex, testsNames[i]);
@@ -80,7 +82,8 @@ public class AppRunner {
         System.out.println("AppRunner -> Done.");
     }
 
-    public int executeCommandLine(String path, final long timeout, final String... commandLine)
+    public int executeCommandLine(String path,
+                                    final long timeout, final String... commandLine)
                                         throws IOException, InterruptedException, ProgramException {
         ProgramException ex = new ProgramException();
         
@@ -94,14 +97,17 @@ public class AppRunner {
         try {
             worker.join(timeout);
             if (worker.exit == null) {
-                ex.key = ProgramException.ExceptionType.TIME_OUT;
+                ex.key = ProgramException.ExceptionType.Timeout;
                 throw ex;
             } else {
                 int exitVal = process.exitValue();
                 if (exitVal == 0) {
                     String testInputPath = commandLine[commandLine.length - 1];
-                    String testOutputPath = testInputPath.substring(0, testInputPath.indexOf(".")) + ".out";
+                    String testOutputPath = testInputPath.substring(0, testInputPath.lastIndexOf(".")) + ".out";
                     String userOutputPath = path + File.separator + "result.out";
+                    
+                    System.out.println("userOutputPath: " + userOutputPath);
+                    
                     checkOutputFile(testOutputPath, userOutputPath);
                     File userOutputFile = new File(userOutputPath);
                     if (userOutputFile.exists()){
@@ -109,12 +115,16 @@ public class AppRunner {
                     }
                 } else { // become exception.
                     BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()));
-                    String errorContext = reader.readLine();
+                    String errorContext="";
+                    String strmLine;
+                    while((strmLine = reader.readLine()) != null){
+                        errorContext += strmLine;
+                    }
                     if (errorContext.contains("java.lang.OutOfMemoryError")) {
-                        ex.key = ProgramException.ExceptionType.MEMORY_OUT;
+                        ex.key = ProgramException.ExceptionType.OutOfMemory;
                     } else {
-                        ex.key = ProgramException.ExceptionType.OTHER;
-                        ex.message = "Other Exception: " + errorContext;
+                        ex.key = ProgramException.ExceptionType.SomeRuntimeExc;
+                        ex.message = errorContext;
                     }
                     throw ex;
                 }
@@ -131,14 +141,16 @@ public class AppRunner {
 
     private void processException(ProgramException ex, String testName) {
         switch (ex.key) {
-            case TIME_OUT:
-                printer.printError("TimeOutException on " + testName + " test.");
+            case Timeout:
+                printer.notifyResult(testName, ProgramException.ExceptionType.Timeout, "");
                 break;
-            case MEMORY_OUT:
-                printer.printError("OutOfMemoryException on " + testName + " test.");
+            case OutOfMemory:
+                printer.notifyResult(testName, ProgramException.ExceptionType.OutOfMemory, "");
+                break;
+            case SomeRuntimeExc:
+                printer.notifyResult(testName, ProgramException.ExceptionType.SomeRuntimeExc, ex.message);
                 break;
             default:
-                printer.printError("Other_2 Exception: " + ex.message);
                 break;
         }
     }
@@ -150,19 +162,25 @@ public class AppRunner {
         
         List<String> realOutput = readOutput(testOutputFilePath);
         List<String> userOutput = readOutput(userOutputFilePath);
+        
+        System.out.println("realOutput.size: " + realOutput.size());
+        System.out.println("userOutput.size: " + userOutput.size());
+        
         if (realOutput.size() != userOutput.size()){
-            printer.printInfo("Fail test: " + testName);
-            printer.printLists(realOutput, userOutput);
+            String msg = "Number of rows in output file is incorrect";
+            printer.notifyResult(testName, ProgramException.ExceptionType.TestFailed, msg);
         }
         else {
             List<LineVerdict> verdicts = compareLists(realOutput, userOutput);
             long count = verdicts.stream().filter((LineVerdict v) -> !v.isSame).count();
             if (count == 0){
-                printer.printInfo("Pass test: " + testName);
+                printer.notifyResult(testName, ProgramException.ExceptionType.NoError, "Success");
+//                printer.printInfo("Pass test: " + testName);
             }
             else {
-                printer.printInfo("Fail test: " + testName);
-                printer.printLists(realOutput, userOutput);
+                printer.notifyResult(testName, ProgramException.ExceptionType.TestFailed, "Incorrect Output");
+//                printer.printInfo("Fail test: " + testName);
+//                printer.printLists(realOutput, userOutput);
             }
         }
     }
@@ -180,14 +198,18 @@ public class AppRunner {
     }
     
     private List<String> readOutput(String filePath) throws ProgramException, IOException {
+        System.out.println("readOutput! filePath: " + filePath);
+        
         File file = new File(filePath);
         BufferedReader reader;
         try {
             reader = new BufferedReader(new FileReader(file));
         } catch (FileNotFoundException ex) {
+            System.out.println("roca error: " + filePath);
+            
             ProgramException e = new ProgramException();
-            e.key = ProgramException.ExceptionType.OTHER;
-            e.message = ex.getMessage();
+            e.key = ProgramException.ExceptionType.SomeRuntimeExc;
+            e.message = "Output file name must be - result.out";
             throw e;
         }
         ArrayList<String> lines = new ArrayList<>();

@@ -14,9 +14,11 @@ public class ProgramException extends Exception {
     ExceptionType key;
     String message = "";
     
-    static enum ExceptionType {
-        TIME_OUT,
-        MEMORY_OUT,
-        OTHER;
+    public static enum ExceptionType {
+        Timeout,
+        OutOfMemory,
+        SomeRuntimeExc,
+        TestFailed,
+        NoError;
     }
 }

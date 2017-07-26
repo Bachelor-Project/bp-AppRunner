@@ -5,21 +5,12 @@
  */
 package runner;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.FileReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.math.BigInteger;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.TimeoutException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import sun.awt.X11.XConstants;
 
 /**
  *
@@ -42,7 +33,7 @@ public class Runner {
     private static void runProcessWithDocker() {
         RunProcess runer = new RunProcess();
         String runDockerImage = "sudo -S docker run --rm -v /home/dato/dockerImages:/test -w /test oracle-java";
-        String runUserCode = "java AppRunner -Xmx1m 2000 java Memory /home/dato/dockerImages/tests 01,02";
+        String runUserCode = "java -jar AppRunner -Xmx1m 2000 java Memory /home/dato/dockerImages/tests 01,02";
 
 //        runer.run(new String[]{"/bin/bash","-c","echo albatrosi0289 | sudo -S ls"});
         runer.run(new String[]{"/bin/bash","-c","echo albatrosi0289 | " + runDockerImage + " " + runUserCode});
