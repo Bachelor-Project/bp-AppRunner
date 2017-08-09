@@ -39,7 +39,7 @@ public class AppRunner {
         
             System.out.println(args[0] + " " + args[1] + "  " + args[2] +" " + tp);
             try {
-                executeCommandLine(path, 2000, args[0], args[1], args[2], tp);
+                executeCommandLine(path, "", 2000, args[0], args[1], args[2], tp);
             } catch (IOException | InterruptedException | ProgramException ex) {
                 Logger.getLogger(AppRunner.class.getName()).log(Level.SEVERE, null, ex);
             }
@@ -69,8 +69,8 @@ public class AppRunner {
             for (int i = 0; i < testsNames.length; i++) {
                 String testFile = taskTestsPath + File.separator + testsNames[i];
                 try {
-                    executeCommandLine(userClassFileDir, 
-                                        timeout, languageCommand, memLimit, userClassFile, testFile);
+                    executeCommandLine(userClassFileDir, testFile,
+                                        timeout, languageCommand, memLimit, userClassFile, "../../.." + testFile.substring(1));
                 }
                 catch (ProgramException ex) {
                    processException(ex, testsNames[i]);
@@ -82,7 +82,7 @@ public class AppRunner {
         System.out.println("AppRunner -> Done.");
     }
 
-    public int executeCommandLine(String path,
+    public int executeCommandLine(String path, String oldPath,
                                     final long timeout, final String... commandLine)
                                         throws IOException, InterruptedException, ProgramException {
         ProgramException ex = new ProgramException();
@@ -102,11 +102,12 @@ public class AppRunner {
             } else {
                 int exitVal = process.exitValue();
                 if (exitVal == 0) {
-                    String testInputPath = commandLine[commandLine.length - 1];
+                    String testInputPath = oldPath; //commandLine[commandLine.length - 1];
                     String testOutputPath = testInputPath.substring(0, testInputPath.lastIndexOf(".")) + ".out";
                     String userOutputPath = path + File.separator + "result.out";
                     
                     System.out.println("userOutputPath: " + userOutputPath);
+                    System.out.println("AXALI. oldPath: " + oldPath);
                     
                     checkOutputFile(testOutputPath, userOutputPath);
                     File userOutputFile = new File(userOutputPath);
@@ -157,7 +158,7 @@ public class AppRunner {
 
     private void checkOutputFile(String testOutputFilePath, String userOutputFilePath) 
                                         throws ProgramException, IOException {
-
+        System.out.println("AXALI. testOutputFilePath: " + testOutputFilePath);
         String testName = testOutputFilePath.substring(testOutputFilePath.lastIndexOf("/") + 1, testOutputFilePath.lastIndexOf("."));
         
         List<String> realOutput = readOutput(testOutputFilePath);
