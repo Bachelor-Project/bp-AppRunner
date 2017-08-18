@@ -23,11 +23,15 @@ public class Runner {
      */
     public static void main(String[] args) {
         AppRunner appRunner = new AppRunner(new MessagePrinter());
-        appRunner.run(args);
-//        appRunner.run2(args[0], args[1].split(" "));
-
-//        runProcessWithDocker();
-//        makeFile();
+        
+        String languageRunner = args[2];
+        if (languageRunner.contains("python")){
+            appRunner.runPython(args);
+        }
+        else if (languageRunner.contains("java")){
+            System.out.println("java-Si shedis");
+            appRunner.run(args);
+        }
     }
 
     private static void runProcessWithDocker() {

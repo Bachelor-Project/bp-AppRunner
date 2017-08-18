@@ -6,11 +6,14 @@
 package runner;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -30,40 +33,39 @@ public class AppRunner {
         this.printer = printer;
     }
     
-    public void run2(String path, String... args){
-//        /home/dato/Documents/project/users/Bob "java -Xmx1m user /home/dato/dockerImages/tests 01,02"
-        
-        String[] tests = args[args.length - 1].split(",");
-        for (String test : tests) {
-            String tp = args[args.length - 2] + test;
-        
-            System.out.println(args[0] + " " + args[1] + "  " + args[2] +" " + tp);
-            try {
-                executeCommandLine(path, "", 2000, args[0], args[1], args[2], tp);
-            } catch (IOException | InterruptedException | ProgramException ex) {
-                Logger.getLogger(AppRunner.class.getName()).log(Level.SEVERE, null, ex);
-            }
-        }
-    }
-
     public void run(String[] args) {
-        // sudo docker run -it --rm -v /home/dato/dockerImages:/test -w /test oracle-java
-        // java AppRunner -Xmx1m 2000 java user1 /home/dato/dockerImages/tests 01,02
-//-Xmx1m 2000 java /home/dato/Documents/project/users/Bob/user /home/dato/dockerImages/tests 01.in,02.in
-// -Xmx1m 2000 java Memory ./codesData/users/Bob/ /home/dato/dockerImages/tests 01,02"
+        // Command for docker:      -Xmx256m 2000 java ./codesData/users/dato/Money ./tasks/Money/tests 01.in,02.in
+        // Command without docker:  -Xmx256m 2000 java /home/dato/Documents/project/codesData/users/Bob/java/Bob_9 /home/dato/Documents/project/tasks/Money/tests 01.in,02.in
 
-            String memLimit = args[0];              // -Xmx1m
-            long timeout = Long.parseLong(args[1]); // 2000 -> 2 seconds
+        String memLimit = args[0];              // -Xmx1m
+        long timeout = Long.parseLong(args[1]); // 2000 -> 2 seconds
+        String languageCommand = args[2];       // java         
 
-            String languageCommand = args[2];       // java         
-            String userClassFilePath = args[3];     // user1 (must be class file (user1.class) without file extension)
-            int lastSlashIndex = userClassFilePath.lastIndexOf("/");
-            String userClassFile = userClassFilePath.substring(lastSlashIndex+1);
-            String userClassFileDir = userClassFilePath.substring(0, lastSlashIndex);
+        String userClassFilePath = "";
+        System.out.println("args[3]: " + args[3]);
+        try {
+            userClassFilePath = URLDecoder.decode(new String(args[3].getBytes(), "UTF-8"), "UTF-8");
+        } catch (UnsupportedEncodingException ex) {
+            Logger.getLogger(AppRunner.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        
+        try {
+            String axali = new String(userClassFilePath.getBytes("iso-8859-1"), "UTF-8");
+            System.out.println("axali: " + axali);
+        } catch (UnsupportedEncodingException ex) {
+            Logger.getLogger(AppRunner.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        
+        
+        System.out.println("userClassFilePath: " + userClassFilePath);
+        
+        int lastSlashIndex = userClassFilePath.lastIndexOf("/");
+        String userClassFile = userClassFilePath.substring(lastSlashIndex+1);
+        String userClassFileDir = userClassFilePath.substring(0, lastSlashIndex);
 //            String outputFilesDirPath = args[4];    // docker-istvis sadacaa result.out, anu damauntebuli direqtoriidan rogor miagnos da ara realuri diskis path-idan.
-            String taskTestsPath = args[4];         // /home/dato/dockerImages/tests
+        String taskTestsPath = args[4];         // /home/dato/dockerImages/tests
 
-            String[] testsNames = args[5].split(","); 	// 01.in,02.in
+        String[] testsNames = args[5].split(","); 	// 01.in,02.in
             
         try {
             for (int i = 0; i < testsNames.length; i++) {
@@ -73,13 +75,13 @@ public class AppRunner {
                                         timeout, languageCommand, memLimit, userClassFile, "../../.." + testFile.substring(1));
                 }
                 catch (ProgramException ex) {
-                   processException(ex, testsNames[i]);
+                   String testName = testFile.substring(testFile.lastIndexOf("/") + 1, testFile.lastIndexOf("."));
+                   processException(ex, testName);
                 }
             }
         } catch (IOException | InterruptedException ex) {
             Logger.getLogger(AppRunner.class.getName()).log(Level.SEVERE, null, ex);
         }
-        System.out.println("AppRunner -> Done.");
     }
 
     public int executeCommandLine(String path, String oldPath,
@@ -106,9 +108,6 @@ public class AppRunner {
                     String testOutputPath = testInputPath.substring(0, testInputPath.lastIndexOf(".")) + ".out";
                     String userOutputPath = path + File.separator + "result.out";
                     
-                    System.out.println("userOutputPath: " + userOutputPath);
-                    System.out.println("AXALI. oldPath: " + oldPath);
-                    
                     checkOutputFile(testOutputPath, userOutputPath);
                     File userOutputFile = new File(userOutputPath);
                     if (userOutputFile.exists()){
@@ -121,7 +120,8 @@ public class AppRunner {
                     while((strmLine = reader.readLine()) != null){
                         errorContext += strmLine;
                     }
-                    if (errorContext.contains("java.lang.OutOfMemoryError")) {
+                    if (errorContext.contains("java.lang.OutOfMemoryError") ||
+                            errorContext.contains("MemoryError")) {
                         ex.key = ProgramException.ExceptionType.OutOfMemory;
                     } else {
                         ex.key = ProgramException.ExceptionType.SomeRuntimeExc;
@@ -143,10 +143,10 @@ public class AppRunner {
     private void processException(ProgramException ex, String testName) {
         switch (ex.key) {
             case Timeout:
-                printer.notifyResult(testName, ProgramException.ExceptionType.Timeout, "");
+                printer.notifyResult(testName, ProgramException.ExceptionType.Timeout, "Timeout exception");
                 break;
             case OutOfMemory:
-                printer.notifyResult(testName, ProgramException.ExceptionType.OutOfMemory, "");
+                printer.notifyResult(testName, ProgramException.ExceptionType.OutOfMemory, "OutOfMemory exception");
                 break;
             case SomeRuntimeExc:
                 printer.notifyResult(testName, ProgramException.ExceptionType.SomeRuntimeExc, ex.message);
@@ -158,14 +158,10 @@ public class AppRunner {
 
     private void checkOutputFile(String testOutputFilePath, String userOutputFilePath) 
                                         throws ProgramException, IOException {
-        System.out.println("AXALI. testOutputFilePath: " + testOutputFilePath);
         String testName = testOutputFilePath.substring(testOutputFilePath.lastIndexOf("/") + 1, testOutputFilePath.lastIndexOf("."));
         
         List<String> realOutput = readOutput(testOutputFilePath);
         List<String> userOutput = readOutput(userOutputFilePath);
-        
-        System.out.println("realOutput.size: " + realOutput.size());
-        System.out.println("userOutput.size: " + userOutput.size());
         
         if (realOutput.size() != userOutput.size()){
             String msg = "Number of rows in output file is incorrect";
@@ -176,12 +172,9 @@ public class AppRunner {
             long count = verdicts.stream().filter((LineVerdict v) -> !v.isSame).count();
             if (count == 0){
                 printer.notifyResult(testName, ProgramException.ExceptionType.NoError, "Success");
-//                printer.printInfo("Pass test: " + testName);
             }
             else {
                 printer.notifyResult(testName, ProgramException.ExceptionType.TestFailed, "Incorrect Output");
-//                printer.printInfo("Fail test: " + testName);
-//                printer.printLists(realOutput, userOutput);
             }
         }
     }
@@ -199,15 +192,11 @@ public class AppRunner {
     }
     
     private List<String> readOutput(String filePath) throws ProgramException, IOException {
-        System.out.println("readOutput! filePath: " + filePath);
-        
         File file = new File(filePath);
         BufferedReader reader;
         try {
             reader = new BufferedReader(new FileReader(file));
         } catch (FileNotFoundException ex) {
-            System.out.println("roca error: " + filePath);
-            
             ProgramException e = new ProgramException();
             e.key = ProgramException.ExceptionType.SomeRuntimeExc;
             e.message = "Output file name must be - result.out";
@@ -220,6 +209,40 @@ public class AppRunner {
         }
         reader.close();
         return lines;
+    }
+
+    /**
+     * Python code runner method.
+     * @param args 
+     */
+    void runPython(String[] args) {
+        // Params for docker container: "" 2000 python3 ./codesData/users/dato/Mem.py ./tasks/Money/tests 01.in,02.in
+        // Params without docker:       "" 2000 python3 /home/dato/Documents/project/codesData/users/Bob/python/Bob_9.py /home/dato/Documents/project/tasks/Money/tests 01.in,02.in
+        
+        long timeout = Long.parseLong(args[1]);
+        String languageCommand = args[2];
+        String userClassFilePath = args[3];
+
+        int lastSlashIndex = userClassFilePath.lastIndexOf("/");
+        String userClassFile = userClassFilePath.substring(lastSlashIndex+1);
+        String userClassFileDir = userClassFilePath.substring(0, lastSlashIndex);
+
+        String taskTestsPath = args[4];
+        String[] testsNames = args[5].split(",");
+        
+        for(int i = 0; i < testsNames.length; i++) {
+            String testFile = taskTestsPath + File.separator + testsNames[i];
+            try {
+                executeCommandLine(userClassFileDir, testFile,
+                                    timeout, languageCommand, userClassFile, "../../.." + testFile.substring(1));
+            }
+            catch (ProgramException ex) {
+               String testName = testFile.substring(testFile.lastIndexOf("/") + 1, testFile.lastIndexOf("."));
+               processException(ex, testName);
+            } catch (IOException | InterruptedException ex) {
+                Logger.getLogger(AppRunner.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
     }
 
 
