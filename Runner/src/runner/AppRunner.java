@@ -121,7 +121,8 @@ public class AppRunner {
                         errorContext += strmLine;
                     }
                     if (errorContext.contains("java.lang.OutOfMemoryError") ||
-                            errorContext.contains("MemoryError")) {
+                            errorContext.contains("MemoryError") ||
+                            errorContext.contains("std::bad_alloc")) {
                         ex.key = ProgramException.ExceptionType.OutOfMemory;
                     } else {
                         ex.key = ProgramException.ExceptionType.SomeRuntimeExc;
@@ -215,7 +216,7 @@ public class AppRunner {
      * Python code runner method.
      * @param args 
      */
-    void runPython(String[] args) {
+    public void runPython(String[] args) {
         // Params for docker container: "" 2000 python3 ./codesData/users/dato/Mem.py ./tasks/Money/tests 01.in,02.in
         // Params without docker:       "" 2000 python3 /home/dato/Documents/project/codesData/users/Bob/python/Bob_9.py /home/dato/Documents/project/tasks/Money/tests 01.in,02.in
         
@@ -235,6 +236,38 @@ public class AppRunner {
             try {
                 executeCommandLine(userClassFileDir, testFile,
                                     timeout, languageCommand, userClassFile, "../../.." + testFile.substring(1));
+            }
+            catch (ProgramException ex) {
+               String testName = testFile.substring(testFile.lastIndexOf("/") + 1, testFile.lastIndexOf("."));
+               processException(ex, testName);
+            } catch (IOException | InterruptedException ex) {
+                Logger.getLogger(AppRunner.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+    }
+    
+    public void runCpp(String[] args){
+        // Params for docker container: 256 2000 g++ ./codesData/users/Bob/cpp/Money.out ./tasks/Money/tests 01.in,02.in
+        // Params without docker:       256 2000 g++ /home/dato/Documents/project/codesData/users/Bob/cpp/a.out /home/dato/Documents/project/tasks/Money/tests 01.in,02.in
+        
+        System.out.println("------------- run cpp -------------");
+        
+        long timeout = Long.parseLong(args[1]);
+        String languageCommand = args[2];
+        String userClassFilePath = args[3];
+
+        int lastSlashIndex = userClassFilePath.lastIndexOf("/");
+        String userClassFile = userClassFilePath.substring(lastSlashIndex+1);
+        String userClassFileDir = userClassFilePath.substring(0, lastSlashIndex);
+
+        String taskTestsPath = args[4];
+        String[] testsNames = args[5].split(",");
+        
+        for(int i = 0; i < testsNames.length; i++) {
+            String testFile = taskTestsPath + File.separator + testsNames[i];
+            try {
+                executeCommandLine(userClassFileDir, testFile,
+                                    timeout, "./"+userClassFile, testFile);
             }
             catch (ProgramException ex) {
                String testName = testFile.substring(testFile.lastIndexOf("/") + 1, testFile.lastIndexOf("."));

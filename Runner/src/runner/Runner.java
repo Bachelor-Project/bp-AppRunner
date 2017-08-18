@@ -29,8 +29,10 @@ public class Runner {
             appRunner.runPython(args);
         }
         else if (languageRunner.contains("java")){
-            System.out.println("java-Si shedis");
             appRunner.run(args);
+        }
+        else if (languageRunner.contains("g++")){
+            appRunner.runCpp(args);
         }
     }
 
