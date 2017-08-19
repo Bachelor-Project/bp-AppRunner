@@ -51,13 +51,10 @@ public class AppRunner {
         
         try {
             String axali = new String(userClassFilePath.getBytes("iso-8859-1"), "UTF-8");
-            System.out.println("axali: " + axali);
         } catch (UnsupportedEncodingException ex) {
             Logger.getLogger(AppRunner.class.getName()).log(Level.SEVERE, null, ex);
         }
         
-        
-        System.out.println("userClassFilePath: " + userClassFilePath);
         
         int lastSlashIndex = userClassFilePath.lastIndexOf("/");
         String userClassFile = userClassFilePath.substring(lastSlashIndex+1);
@@ -125,6 +122,7 @@ public class AppRunner {
                             errorContext.contains("std::bad_alloc")) {
                         ex.key = ProgramException.ExceptionType.OutOfMemory;
                     } else {
+                        System.out.println("damtavrda da shemovida aq...  exitVal != 0");
                         ex.key = ProgramException.ExceptionType.SomeRuntimeExc;
                         ex.message = errorContext;
                     }
@@ -247,9 +245,9 @@ public class AppRunner {
     }
     
     public void runCpp(String[] args){
-        // Params for docker container: 256 2000 g++ ./codesData/users/Bob/cpp/Money.out ./tasks/Money/tests 01.in,02.in
-        // Params without docker:       256 2000 g++ /home/dato/Documents/project/codesData/users/Bob/cpp/a.out /home/dato/Documents/project/tasks/Money/tests 01.in,02.in
-        
+        // Params for docker container: 256 2000 g++ ./codesData/users/Bob/cpp/Money.cpp ./tasks/Money/tests 01.in,02.in
+        // Params without docker:       256 2000 g++ /home/dato/Documents/project/codesData/users/dato/CowTurn.cpp /home/dato/Documents/project/tasks/CowTurn/tests 01.in
+//                                      256 1000 g++ ./codesData/users/dato/CowTurn.cpp ./tasks/CowTurn/tests 05.in,08.in
         System.out.println("------------- run cpp -------------");
         
         long timeout = Long.parseLong(args[1]);
@@ -258,16 +256,19 @@ public class AppRunner {
 
         int lastSlashIndex = userClassFilePath.lastIndexOf("/");
         String userClassFile = userClassFilePath.substring(lastSlashIndex+1);
+        String runnerFileName = userClassFile.substring(0, userClassFile.lastIndexOf("."));
         String userClassFileDir = userClassFilePath.substring(0, lastSlashIndex);
 
         String taskTestsPath = args[4];
         String[] testsNames = args[5].split(",");
         
+        makeOutFile(languageCommand, runnerFileName, userClassFile, userClassFileDir);
+        
         for(int i = 0; i < testsNames.length; i++) {
             String testFile = taskTestsPath + File.separator + testsNames[i];
             try {
                 executeCommandLine(userClassFileDir, testFile,
-                                    timeout, "./"+userClassFile, testFile);
+                                    timeout, "./"+runnerFileName, "../../.." + testFile.substring(1));
             }
             catch (ProgramException ex) {
                String testName = testFile.substring(testFile.lastIndexOf("/") + 1, testFile.lastIndexOf("."));
@@ -275,6 +276,29 @@ public class AppRunner {
             } catch (IOException | InterruptedException ex) {
                 Logger.getLogger(AppRunner.class.getName()).log(Level.SEVERE, null, ex);
             }
+        }
+    }
+    
+    private void makeOutFile(String languageCommand, String runnerFileName, String userClassFile, String userClassFileDir){
+        try {
+            String[] makeOutFileCommand = new String[4];
+            makeOutFileCommand[0] = languageCommand.trim();
+            makeOutFileCommand[1] = "-o";
+            makeOutFileCommand[2] = runnerFileName;
+            makeOutFileCommand[3] = userClassFile;
+            
+            System.out.println("-------------------------- make -o command --------------------------");
+            for (String com : makeOutFileCommand) {
+                System.out.print(com + " ");
+            }
+            System.out.println("");
+            
+            ProcessBuilder pb = new ProcessBuilder(makeOutFileCommand);
+            pb.directory(new File(userClassFileDir));
+            Process p = pb.start();
+            p.waitFor();
+        } catch (IOException | InterruptedException ex) {
+            Logger.getLogger(AppRunner.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
 
