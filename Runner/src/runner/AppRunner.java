@@ -37,24 +37,12 @@ public class AppRunner {
         // Command for docker:      -Xmx256m 2000 java ./codesData/users/dato/Money ./tasks/Money/tests 01.in,02.in
         // Command without docker:  -Xmx256m 2000 java /home/dato/Documents/project/codesData/users/Bob/java/Bob_9 /home/dato/Documents/project/tasks/Money/tests 01.in,02.in
 
+//        System.out.println("------------- run java -------------");
+        
         String memLimit = args[0];              // -Xmx1m
         long timeout = Long.parseLong(args[1]); // 2000 -> 2 seconds
         String languageCommand = args[2];       // java         
-
-        String userClassFilePath = "";
-        System.out.println("args[3]: " + args[3]);
-        try {
-            userClassFilePath = URLDecoder.decode(new String(args[3].getBytes(), "UTF-8"), "UTF-8");
-        } catch (UnsupportedEncodingException ex) {
-            Logger.getLogger(AppRunner.class.getName()).log(Level.SEVERE, null, ex);
-        }
-        
-        try {
-            String axali = new String(userClassFilePath.getBytes("iso-8859-1"), "UTF-8");
-        } catch (UnsupportedEncodingException ex) {
-            Logger.getLogger(AppRunner.class.getName()).log(Level.SEVERE, null, ex);
-        }
-        
+        String userClassFilePath = args[3];
         
         int lastSlashIndex = userClassFilePath.lastIndexOf("/");
         String userClassFile = userClassFilePath.substring(lastSlashIndex+1);
@@ -122,7 +110,6 @@ public class AppRunner {
                             errorContext.contains("std::bad_alloc")) {
                         ex.key = ProgramException.ExceptionType.OutOfMemory;
                     } else {
-                        System.out.println("damtavrda da shemovida aq...  exitVal != 0");
                         ex.key = ProgramException.ExceptionType.SomeRuntimeExc;
                         ex.message = errorContext;
                     }
@@ -248,7 +235,7 @@ public class AppRunner {
         // Params for docker container: 256 2000 g++ ./codesData/users/Bob/cpp/Money.cpp ./tasks/Money/tests 01.in,02.in
         // Params without docker:       256 2000 g++ /home/dato/Documents/project/codesData/users/dato/CowTurn.cpp /home/dato/Documents/project/tasks/CowTurn/tests 01.in
 //                                      256 1000 g++ ./codesData/users/dato/CowTurn.cpp ./tasks/CowTurn/tests 05.in,08.in
-        System.out.println("------------- run cpp -------------");
+//        System.out.println("------------- run cpp -------------");
         
         long timeout = Long.parseLong(args[1]);
         String languageCommand = args[2];
@@ -286,12 +273,6 @@ public class AppRunner {
             makeOutFileCommand[1] = "-o";
             makeOutFileCommand[2] = runnerFileName;
             makeOutFileCommand[3] = userClassFile;
-            
-            System.out.println("-------------------------- make -o command --------------------------");
-            for (String com : makeOutFileCommand) {
-                System.out.print(com + " ");
-            }
-            System.out.println("");
             
             ProcessBuilder pb = new ProcessBuilder(makeOutFileCommand);
             pb.directory(new File(userClassFileDir));
